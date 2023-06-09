@@ -1,6 +1,19 @@
 #![allow(dead_code)]
-#[derive(Debug, PartialEq)]
-pub enum Token {
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Token {
+    pub ttype: TokenType,
+    pub literal: String,
+}
+
+impl Token {
+    pub fn new(ttype: TokenType, literal: String) -> Token {
+        Token { ttype, literal }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TokenType {
     // Keywords
     Let,
     Fn,
@@ -11,15 +24,19 @@ pub enum Token {
     Return,
 
     // Identifiers and literals
-    Identifier(String),
-    Integer(String),
-    String(String),
+    Identifier,
+    Integer,
+    String,
 
     // Operators
     Plus,
+    Increment,
     Minus,
+    Decrement,
     Asterisk,
     Slash,
+    Question,
+    Percent,
     Assign,
     Bang,
     Equal,

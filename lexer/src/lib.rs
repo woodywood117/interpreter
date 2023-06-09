@@ -1,4 +1,4 @@
-use token;
+use token::{Token, TokenType};
 
 pub struct Lexer {
     input: Vec<char>,
@@ -39,7 +39,7 @@ impl Lexer {
 }
 
 impl Iterator for Lexer {
-    type Item = token::Token;
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Skip whitespace
@@ -53,48 +53,64 @@ impl Iterator for Lexer {
         }
 
         let token = match self.ch {
-            '+' => token::Token::Plus,
-            '-' => token::Token::Minus,
-            '*' => token::Token::Asterisk,
-            '/' => token::Token::Slash,
+            '+' => {
+                if self.peek() == '+' {
+                    self.read_char();
+                    Token::new(TokenType::Increment, "++".to_string())
+                } else {
+                    Token::new(TokenType::Plus, self.ch.to_string())
+                }
+            }
+            '-' => {
+                if self.peek() == '-' {
+                    self.read_char();
+                    Token::new(TokenType::Decrement, "--".to_string())
+                } else {
+                    Token::new(TokenType::Minus, self.ch.to_string())
+                }
+            }
+            '*' => Token::new(TokenType::Asterisk, self.ch.to_string()),
+            '/' => Token::new(TokenType::Slash, self.ch.to_string()),
+            '?' => Token::new(TokenType::Question, self.ch.to_string()),
+            '%' => Token::new(TokenType::Percent, self.ch.to_string()),
             '=' => {
                 if self.peek() == '=' {
                     self.read_char();
-                    token::Token::Equal
+                    Token::new(TokenType::Equal, "==".to_string())
                 } else {
-                    token::Token::Assign
+                    Token::new(TokenType::Assign, self.ch.to_string())
                 }},
             '!' => {
                 if self.peek() == '=' {
                     self.read_char();
-                    token::Token::NotEqual
+                    Token::new(TokenType::NotEqual, "!=".to_string())
                 } else {
-                    token::Token::Bang
+                    Token::new(TokenType::Bang, self.ch.to_string())
                 }},
             '<' => {
                 if self.peek() == '=' {
                     self.read_char();
-                    token::Token::LessThanOrEqual
+                    Token::new(TokenType::LessThanOrEqual, "<=".to_string())
                 } else {
-                    token::Token::LessThan
+                    Token::new(TokenType::LessThan, self.ch.to_string())
                 }},
             '>' => {
                 if self.peek() == '=' {
                     self.read_char();
-                    token::Token::GreaterThanOrEqual
+                    Token::new(TokenType::GreaterThanOrEqual, ">=".to_string())
                 } else {
-                    token::Token::GreaterThan
+                    Token::new(TokenType::GreaterThan, self.ch.to_string())
                 }},
-            ',' => token::Token::Comma,
-            ';' => token::Token::Semicolon,
-            ':' => token::Token::Colon,
-            '(' => token::Token::LeftParen,
-            ')' => token::Token::RightParen,
-            '[' => token::Token::LeftSquareBracket,
-            ']' => token::Token::RightSquareBracket,
-            '{' => token::Token::LeftCurlyBracket,
-            '}' => token::Token::RightCurlyBracket,
-            '\0' => token::Token::Eof,
+            ',' => Token::new(TokenType::Comma, self.ch.to_string()),
+            ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
+            ':' => Token::new(TokenType::Colon, self.ch.to_string()),
+            '(' => Token::new(TokenType::LeftParen, self.ch.to_string()),
+            ')' => Token::new(TokenType::RightParen, self.ch.to_string()),
+            '[' => Token::new(TokenType::LeftSquareBracket, self.ch.to_string()),
+            ']' => Token::new(TokenType::RightSquareBracket, self.ch.to_string()),
+            '{' => Token::new(TokenType::LeftCurlyBracket, self.ch.to_string()),
+            '}' => Token::new(TokenType::RightCurlyBracket, self.ch.to_string()),
+            '\0' => Token::new(TokenType::Eof, self.ch.to_string()),
             'a'..='z'|'A'..='Z'|'_' => {
                 let mut ident = String::new();
                 while self.ch.is_alphabetic() || self.ch == '_' {
@@ -102,14 +118,14 @@ impl Iterator for Lexer {
                     self.read_char();
                 }
                 let token = match ident.as_str() {
-                    "let" => token::Token::Let,
-                    "fn" => token::Token::Fn,
-                    "true" => token::Token::True,
-                    "false" => token::Token::False,
-                    "if" => token::Token::If,
-                    "else" => token::Token::Else,
-                    "return" => token::Token::Return,
-                    _ => token::Token::Identifier(ident),
+                    "let" => Token::new(TokenType::Let, ident),
+                    "fn" => Token::new(TokenType::Fn, ident),
+                    "true" => Token::new(TokenType::True, ident),
+                    "false" => Token::new(TokenType::False, ident),
+                    "if" => Token::new(TokenType::If, ident),
+                    "else" => Token::new(TokenType::Else, ident),
+                    "return" => Token::new(TokenType::Return, ident),
+                    _ => Token::new(TokenType::Identifier, ident)
                 };
                 return Some(token);
             }
@@ -119,7 +135,7 @@ impl Iterator for Lexer {
                     number.push(self.ch);
                     self.read_char();
                 }
-                return Some(token::Token::Integer(number));
+                return Some(Token::new(TokenType::Integer, number));
             }
             '"' => {
                 let mut string = String::new();
@@ -127,16 +143,16 @@ impl Iterator for Lexer {
                 self.read_char();
                 while self.ch != '"' {
                     if self.ch == '\0' || self.ch == '\n' {
-                        return Some(token::Token::Illegal);
+                        return Some(Token::new(TokenType::Illegal, string));
                     }
                     string.push(self.ch);
                     self.read_char();
                 }
                 string.push(self.ch);
                 self.read_char();
-                return Some(token::Token::String(string));
+                return Some(Token::new(TokenType::String, string));
             }
-            _ => token::Token::Illegal,
+            _ => Token::new(TokenType::Illegal, self.ch.to_string())
         };
 
         self.read_char();
@@ -144,32 +160,39 @@ impl Iterator for Lexer {
     }
 }
 
-#[test]
-fn test_lexer_delimiters() {
-    let l = Lexer::new(String::from("+-*/=,;:()[]{}"));
-    let tokens = l.collect::<Vec<token::Token>>();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    assert_eq!(tokens[0], token::Token::Plus);
-    assert_eq!(tokens[1], token::Token::Minus);
-    assert_eq!(tokens[2], token::Token::Asterisk);
-    assert_eq!(tokens[3], token::Token::Slash);
-    assert_eq!(tokens[4], token::Token::Assign);
-    assert_eq!(tokens[5], token::Token::Comma);
-    assert_eq!(tokens[6], token::Token::Semicolon);
-    assert_eq!(tokens[7], token::Token::Colon);
-    assert_eq!(tokens[8], token::Token::LeftParen);
-    assert_eq!(tokens[9], token::Token::RightParen);
-    assert_eq!(tokens[10], token::Token::LeftSquareBracket);
-    assert_eq!(tokens[11], token::Token::RightSquareBracket);
-    assert_eq!(tokens[12], token::Token::LeftCurlyBracket);
-    assert_eq!(tokens[13], token::Token::RightCurlyBracket);
-    assert_eq!(tokens[14], token::Token::Eof);
-}
+    #[test]
+    fn test_lexer_delimiters() {
+        let mut l = Lexer::new(String::from("+-*/=,;:()[]{}++--?%"));
 
-#[test]
-fn test_next_token() {
-    let input = String::from(
-        r#"let five = 5;
+        assert_eq!(l.next().unwrap().ttype, TokenType::Plus);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Minus);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Asterisk);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Slash);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Assign);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Comma);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Colon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftParen);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightParen);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftSquareBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightSquareBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Increment);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Decrement);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Question);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Percent);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Eof);
+    }
+
+    #[test]
+    fn test_next_token() {
+        let input = String::from(
+            r#"let five = 5;
         let ten = 10;
         
         let add = fn(x, y) {
@@ -193,92 +216,93 @@ fn test_next_token() {
         "te st" != "test";
         "#);
 
-    let mut l = Lexer::new(input);
+        let mut l = Lexer::new(input);
 
-    assert_eq!(l.next().unwrap(), token::Token::Let);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("five")));
-    assert_eq!(l.next().unwrap(), token::Token::Assign);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("5")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Let);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("ten")));
-    assert_eq!(l.next().unwrap(), token::Token::Assign);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Let);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("add")));
-    assert_eq!(l.next().unwrap(), token::Token::Assign);
-    assert_eq!(l.next().unwrap(), token::Token::Fn);
-    assert_eq!(l.next().unwrap(), token::Token::LeftParen);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("x")));
-    assert_eq!(l.next().unwrap(), token::Token::Comma);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("y")));
-    assert_eq!(l.next().unwrap(), token::Token::RightParen);
-    assert_eq!(l.next().unwrap(), token::Token::LeftCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("x")));
-    assert_eq!(l.next().unwrap(), token::Token::Plus);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("y")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::RightCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Let);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("result")));
-    assert_eq!(l.next().unwrap(), token::Token::Assign);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("add")));
-    assert_eq!(l.next().unwrap(), token::Token::LeftParen);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("five")));
-    assert_eq!(l.next().unwrap(), token::Token::Comma);
-    assert_eq!(l.next().unwrap(), token::Token::Identifier(String::from("ten")));
-    assert_eq!(l.next().unwrap(), token::Token::RightParen);
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Bang);
-    assert_eq!(l.next().unwrap(), token::Token::Minus);
-    assert_eq!(l.next().unwrap(), token::Token::Slash);
-    assert_eq!(l.next().unwrap(), token::Token::Asterisk);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("5")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("5")));
-    assert_eq!(l.next().unwrap(), token::Token::LessThan);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::GreaterThan);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("5")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::If);
-    assert_eq!(l.next().unwrap(), token::Token::LeftParen);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("5")));
-    assert_eq!(l.next().unwrap(), token::Token::LessThan);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::RightParen);
-    assert_eq!(l.next().unwrap(), token::Token::LeftCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Return);
-    assert_eq!(l.next().unwrap(), token::Token::True);
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::RightCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Else);
-    assert_eq!(l.next().unwrap(), token::Token::LeftCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Return);
-    assert_eq!(l.next().unwrap(), token::Token::False);
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::RightCurlyBracket);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::Equal);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::NotEqual);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("9")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::GreaterThanOrEqual);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("9")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("9")));
-    assert_eq!(l.next().unwrap(), token::Token::LessThanOrEqual);
-    assert_eq!(l.next().unwrap(), token::Token::Integer(String::from("10")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::String(String::from("\"te st\"")));
-    assert_eq!(l.next().unwrap(), token::Token::NotEqual);
-    assert_eq!(l.next().unwrap(), token::Token::String(String::from("\"test\"")));
-    assert_eq!(l.next().unwrap(), token::Token::Semicolon);
-    assert_eq!(l.next().unwrap(), token::Token::Eof);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Let);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("five")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Assign);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("5")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Let);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("ten")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Assign);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Let);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("add")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Assign);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Fn);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftParen);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("x")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Comma);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("y")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightParen);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftCurlyBracket);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("x")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Plus);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("y")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Let);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("result")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Assign);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("add")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftParen);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("five")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Comma);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Identifier, String::from("ten")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightParen);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Bang);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Minus);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Slash);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Asterisk);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("5")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("5")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::LessThan);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::GreaterThan);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("5")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::If);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftParen);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("5")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::LessThan);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightParen);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Return);
+        assert_eq!(l.next().unwrap().ttype, TokenType::True);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Else);
+        assert_eq!(l.next().unwrap().ttype, TokenType::LeftCurlyBracket);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Return);
+        assert_eq!(l.next().unwrap().ttype, TokenType::False);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::RightCurlyBracket);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Equal);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::NotEqual);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("9")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::GreaterThanOrEqual);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("9")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("9")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::LessThanOrEqual);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::Integer, String::from("10")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::String, String::from("\"te st\"")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::NotEqual);
+        assert_eq!(l.next().unwrap(), Token::new(TokenType::String, String::from("\"test\"")));
+        assert_eq!(l.next().unwrap().ttype, TokenType::Semicolon);
+        assert_eq!(l.next().unwrap().ttype, TokenType::Eof);
+    }
 }
